@@ -1,7 +1,8 @@
 # Module 1: Climate
 
 ## Team members and contributions
-To be updated
+
+ - Nikhil Shah - everything
 
 ## Learning objectives
 

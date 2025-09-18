@@ -1,12 +1,12 @@
 ---
 title: "Module 1: Climate change"
 format: pdf
-editor: visual
+editor: source
 ---
 
 ```{r}
 #| warning: false
-#| output-location: false
+
 library(tidyverse)
 ```
 
@@ -45,13 +45,46 @@ head(co2)
 
 Create a timeseries plot of average \[CO~2~\]. Use `as.Date()` to create a formatted date for the x-axis. Label both the y-axis and add a line to connect the points.
 
+```{r}
+co2 <- mutate(co2, date = as.Date(str_c(year, month, '15', sep = '-'), 
+                                  format = "%Y-%m-%d"))
+
+ggplot(co2, aes(x = date,
+                y = average)) +
+  geom_point(size = 0.2) +
+  geom_line() +
+  labs(x = 'Date',
+       y = 'Average Atmospheric CO2 (ppm)',
+       title = 'CO2 concentration over time')
+  
+```
+
 ### Q2 (1 point)
 
 What months are the \[CO~2~\] values at the maximum? Create another dataframe with these months selected and create a plot like above, but with the maximum months colored in "forestgreen".
 
+```{r}
+co2 <- co2 |>
+  group_by(year) |>
+  mutate(peak = average == max(average)) |>
+  ungroup()
+
+ggplot(co2, aes(x = date,
+                y = average)) +
+  geom_line() +
+  geom_point(aes(color = peak),
+             size = 0.4) +
+  scale_color_manual(values = c('black', 'forestgreen')) +
+  labs(x = 'Date',
+       y = 'Average Atmospheric CO2 (ppm)',
+       title = 'CO2 concentration over time')
+```
+
 ### Q3 (1 point)
 
 What explains the seasonal variation in \[CO~2~\]? After reading Lewandowsky et al. 2016, how might you go about separating the long term trend and the seasonal variation in \[CO~2~\]?
+
+-   \[CO~2~\] is affected by photosynthesis, which does not occur at a constant rate year-round. Fluctuations in photosynthetic activity would cause correlated fluctuations in the amount of CO~2~ in the atmosphere.
 
 ## Global temperature
 
