@@ -84,7 +84,8 @@ ggplot(co2, aes(x = date,
 
 What explains the seasonal variation in \[CO~2~\]? After reading Lewandowsky et al. 2016, how might you go about separating the long term trend and the seasonal variation in \[CO~2~\]?
 
--   \[CO~2~\] is affected by photosynthesis, which does not occur at a constant rate year-round. Fluctuations in photosynthetic activity would cause correlated fluctuations in the amount of CO~2~ in the atmosphere.
+-   \[CO~2~\] is affected by photosynthesis, which does not occur at a constant rate year-round because of plant growth cycles. Fluctuations in photosynthetic activity would cause correlated fluctuations in the amount of CO~2~ in the atmosphere.
+-   Lewandowsky et al differentiate annual 15-year trends against the 44-year average global temperature increase. You could do something similar here, use the average \[CO~2~\] increase over a long period of time and take the measurement at each month and see how it deviates from that mean, and then plot that difference or a z-score, isolating the seasonal fluctuation.
 
 ## Global temperature
 
@@ -96,21 +97,81 @@ Read some [background](https://data.giss.nasa.gov/gistemp/history/background.htm
 
 How are the measurements made? Describe each column in the dataset and its units. What are the resolution of the data?
 
+- Meteorological data is gathered from stations on both the surface of the land and sea every year. Gaps are filled in using patterns from stations up to 1200km away.
+- Column 1 is the year, which is just a year. Column 2 is the difference between the actual temperature value for that year, and the 1951-1980 average temperature, in degrees C. Column 3 is used to smooth the line chart, and is the 5 year rolling average, also in degrees C.
+- Annual, to the nearest 0.01 C
+
 ### Q5 (1 point)
 
 Construct code to import dataset in a format that can be used for transforming and visualization.
+
+```{r}
+giss <- read_table(file = 'data/giss.txt',
+                   skip = 5,
+                   col_names = c("Year", "No_Smoothing", "Lowess5"))
+```
 
 ### Q6 (1 point)
 
 Plot the trend in global mean temperature over time. Describe what you see and how you interpret the patterns you observe.
 
+```{r}
+ggplot(giss) +
+  geom_point(aes(x = Year,
+                 y = No_Smoothing)) +
+  geom_smooth(aes(x = Year,
+                  y = No_Smoothing),
+              se = F,
+              span = 0.12) +
+  geom_line(aes(x = Year,
+                y = Lowess5)) +
+  labs(x = 'Year',
+       y = 'Temperature difference',
+       title = 'Global Temperature Difference from 1951-1980 Average')
+```
+
 ### Q7 (1 point)
 
 Consider the "pause" analyzed in Lewandowsky et al. 2016. Do you see evidence for such a pause?
 
+- The smoothing used by NASA shows the decadal fluctuation in global temperatures, where independent of human-caused global warming, it increases and decreases marginally every 12-15 years. Both effects combined results 6-8 year periods of rapid temperature increase, followed by 6-8 years of slow or zero temperature increase. However, long term patterns show that while in 2005 the temperature might not have been increasing year-to-year, the long-term pattern shows that global warming would not be stopping, and the temperature experienced its highest ever slope immediately after, disproving the idea of global warming stopping.
+
 ### Bonus 1 (1 point)
 
 Recreate the analysis from Lewandowsky's Fig. 1.
+
+```{r}
+giss <- giss |>
+  mutate('fifteen' = (lead(No_Smoothing, n = 7) - lag(No_Smoothing, n = 7))) |>
+  mutate('fifteen_decadal' = round(((fifteen / 1.5)), 2))
+
+giss |>
+  filter(Year >= 1977 & Year <= 2007) |>
+  ggplot(aes(x = Year,
+             y = fifteen_decadal)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = 0.16,
+             size = 2.5,
+             alpha = 0.5) +
+  geom_hline(yintercept = 0,
+             linetype = 'dashed',
+             size = 1) +
+  annotate(geom = "text",
+           x = 1981,
+           y = 0.015,
+           label = 'Pause',
+           size = 2.5) +
+  annotate(geom = "text",
+           x = 1987,
+           y = 0.175,
+           label = 'Trends 1970-2014',
+           size = 2.5) +
+  labs(x = 'Mid-year of 15-year window',
+       y = 'Decadal Trend (K)',
+       title = 'Global Temperature Anomaly in 15-Year Windows') +
+  theme_classic()
+```
 
 ## Long term records of CO2
 
