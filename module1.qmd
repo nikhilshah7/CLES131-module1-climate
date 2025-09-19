@@ -97,9 +97,9 @@ Read some [background](https://data.giss.nasa.gov/gistemp/history/background.htm
 
 How are the measurements made? Describe each column in the dataset and its units. What are the resolution of the data?
 
-- Meteorological data is gathered from stations on both the surface of the land and sea every year. Gaps are filled in using patterns from stations up to 1200km away.
-- Column 1 is the year, which is just a year. Column 2 is the difference between the actual temperature value for that year, and the 1951-1980 average temperature, in degrees C. Column 3 is used to smooth the line chart, and is the 5 year rolling average, also in degrees C.
-- Annual, to the nearest 0.01 C
+-   Meteorological data is gathered from stations on both the surface of the land and sea every year. Gaps are filled in using patterns from stations up to 1200km away.
+-   Column 1 is the year, which is just a year. Column 2 is the difference between the actual temperature value for that year, and the 1951-1980 average temperature, in degrees C. Column 3 is used to smooth the line chart, and is the 5 year rolling average, also in degrees C.
+-   Annual, to the nearest 0.01 C
 
 ### Q5 (1 point)
 
@@ -134,18 +134,21 @@ ggplot(giss) +
 
 Consider the "pause" analyzed in Lewandowsky et al. 2016. Do you see evidence for such a pause?
 
-- The smoothing used by NASA shows the decadal fluctuation in global temperatures, where independent of human-caused global warming, it increases and decreases marginally every 12-15 years. Both effects combined results 6-8 year periods of rapid temperature increase, followed by 6-8 years of slow or zero temperature increase. However, long term patterns show that while in 2005 the temperature might not have been increasing year-to-year, the long-term pattern shows that global warming would not be stopping, and the temperature experienced its highest ever slope immediately after, disproving the idea of global warming stopping.
+-   The smoothing used by NASA shows the decadal fluctuation in global temperatures, where independent of human-caused global warming, it increases and decreases marginally every 12-15 years. Both effects combined results 6-8 year periods of rapid temperature increase, followed by 6-8 years of slow or zero temperature increase. However, long term patterns show that while in 2005 the temperature might not have been increasing year-to-year, the long-term pattern shows that global warming would not be stopping, and the temperature experienced its highest ever slope immediately after, disproving the idea of global warming stopping.
 
 ### Bonus 1 (1 point)
 
 Recreate the analysis from Lewandowsky's Fig. 1.
 
 ```{r}
-giss <- giss |>
+giss_sample <- giss |>
   mutate('fifteen' = (lead(No_Smoothing, n = 7) - lag(No_Smoothing, n = 7))) |>
-  mutate('fifteen_decadal' = round(((fifteen / 1.5)), 2))
+  mutate('fifteen_decadal' = round(((fifteen / 1.5)), 2)) |>
+  filter(Year >= 1970 & Year <= 2014) |>
+  mutate('z' = (fifteen_decadal - 0.1601) / sd(fifteen_decadal, na.rm = T)) |>
+  mutate(direction = ifelse(z >= 0, 'above 0', 'below 0'))
 
-giss |>
+giss_sample |>
   filter(Year >= 1977 & Year <= 2007) |>
   ggplot(aes(x = Year,
              y = fifteen_decadal)) +
@@ -171,6 +174,17 @@ giss |>
        y = 'Decadal Trend (K)',
        title = 'Global Temperature Anomaly in 15-Year Windows') +
   theme_classic()
+
+giss_sample |>
+  filter(Year >= 1977 & Year <= 2007) |>
+  ggplot(aes(x = Year,
+             y = abs(z))) +
+  geom_point(aes(color = direction)) +
+  geom_line() +
+  labs(x = 'Mid-year of 15-year window',
+       y = 'Absolute z-score of trend',
+       title = 'Global Temperature Anomaly in 15-Year Windows') +
+  theme_classic()
 ```
 
 ## Long term records of CO2
@@ -185,14 +199,86 @@ After downloading this dataset, create a folder entitled `data` and save the fil
 
 After downloading this dataset, create a folder entitled `data` and save the file within the folder with a .txt extension. Read this file into R. What are the columns and units? How were these data obtained?
 
+```{r}
+vostok <- read_table(file = 'data/vostok.icecore.co2.txt',
+                   skip = 20,
+                   col_names = c("Depth", 
+                                 "IceAge", 
+                                 "AirTime",
+                                 "average"))
+```
+
+- Depth in the ice in meters
+- Age of the ice and of the air in years before present
+- Concentration of carbon dioxide in parts per million by volume
+
+- Data was obtained by taking ice samples from the Vostok Ice Core and looking at pores in the ice to sample air. Dating is done by looking at yearly layers of the ice.
+
 ### Q9 (1 point)
 
 Transform the data as needed to create a plot in chronological order. Add at least two different smoothing window averages to your plot.
+
+```{r}
+vostok <- vostok |>
+  mutate(year = 2025 - AirTime)
+
+ggplot(data = vostok, 
+       mapping = aes(x = year,
+                     y = average)) +
+  geom_point(size = 0.2) +
+  geom_line() +
+  geom_smooth(se = F, span = 2) +
+  geom_smooth(se = F, span = 0.3, color = 'red') +
+  labs(x = 'Year',
+       y = 'Average Atmospheric CO2 (ppm)',
+       title = 'CO2 concentration over time')
+```
+
 
 ### Q10 (1 point)
 
 Join your data with the Mauna Loa data and plot together, considering different colors for the different datasets.
 
+```{r}
+co2_yearly <- co2 |>
+  group_by(year) |>
+  summarize(yearly_average = mean(average)) |>
+  mutate(source = 'Mauna Loa')
+
+vostok <- vostok |>
+  mutate(source = 'Vostok Ice Core')
+
+ggplot() +
+  geom_line(data = vostok, 
+            mapping = aes(x = year,
+                          y = average)) +
+  geom_point(data = vostok, 
+             mapping = aes(x = year,
+                           y = average,
+                           color = source),
+             size = 0.5) +
+  geom_line(data = co2_yearly, 
+            mapping = aes(x = year,
+                          y = yearly_average)) +
+  geom_point(data = co2_yearly, 
+             mapping = aes(x = year,
+                           y = yearly_average,
+                           color = source),
+             size = 0.5) +
+  labs(x = 'Year',
+       y = 'Average Atmospheric CO2 (ppm)',
+       title = 'Atmospheric CO2 concentration over time',
+       legend = 'Data Source') +
+  scale_color_manual(values = c("Vostok Ice Core" = "skyblue", 
+                                "Mauna Loa" = "orange")) +
+  theme_bw()
+```
+
+
 ### Bonus 2 (1 point)
 
 Write a catchy title and short description in the style of a NYtimes infographic, contrasting the rate of anthropogenic vs. background climate change for a general public audience.
+
+### Atmospheric CO~2~ changes naturally. Humans are increasing it 500 times faster than usual.
+
+The atmosphere naturally fluctuates between about 200 and 300 parts per million (ppm) of CO~2~ over long periods of time. Each of these cycles takes about 100,000 years. According to historical samples of the atmosphere extracted from ice cores, in the most recent cycle, the atmosphere gained 100 ppm of CO~2~ in a span of about 25,000 years. Humans have managed to inject another 100 ppm into the atmosphere in just the last 53 years, and the level of carbon in the atmosphere is now 44% higher than its peak in the last 400,000 years. 
